@@ -33,8 +33,6 @@ app.use(express.json());
 // Configuration Socket.IO
 const io = new Server(httpServer, {
     cors: corsOptions,
-    transports: ["websocket", "polling"],
-    allowEIO3: true,
 });
 
 // Routes Express basiques

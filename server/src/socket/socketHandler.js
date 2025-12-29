@@ -10,7 +10,9 @@ export function setupSocketHandlers(io) {
     io.on("connection", (socket) => {
         logger.info(`Nouvelle connexion: ${socket.id}`);
 
-        // Événement: Créer un salon
+        // ============================================
+        // ÉVÉNEMENT: Créer un salon
+        // ============================================
         socket.on("create-room", (callback) => {
             try {
                 const roomId = gameManager.createRoom();
@@ -27,7 +29,9 @@ export function setupSocketHandlers(io) {
             }
         });
 
-        // Événement: Rejoindre un salon
+        // ============================================
+        // ÉVÉNEMENT: Rejoindre un salon
+        // ============================================
         socket.on("join-room", ({ roomId, username }, callback) => {
             try {
                 console.log(
@@ -80,7 +84,9 @@ export function setupSocketHandlers(io) {
             }
         });
 
-        // Événement: Démarrer la partie (réservé à l'hôte)
+        // ============================================
+        // ÉVÉNEMENT: Démarrer la partie (réservé à l'hôte)
+        // ============================================
         socket.on("start-game", (roomId, callback) => {
             try {
                 const room = gameManager.getRoom(roomId);
@@ -122,8 +128,11 @@ export function setupSocketHandlers(io) {
                             firstSpeaker: room.gameState.firstSpeaker,
                         });
 
-                        // Envoyer à CHAQUE joueur UNIQUEMENT son mot
+                        // ✅ CRITIQUE : Envoyer à CHAQUE joueur UNIQUEMENT son mot
                         room.players.forEach((player) => {
+                            console.log(
+                                `📤 Envoi du mot à ${player.username} (${player.id}): "${player.currentWord}"`
+                            );
                             io.to(player.id).emit("word-assigned", {
                                 word: player.currentWord,
                             });
@@ -152,7 +161,215 @@ export function setupSocketHandlers(io) {
             }
         });
 
-        // Événement: Obtenir les infos d'un salon
+        // ============================================
+        // ÉVÉNEMENT: Initier le vote (Sprint 2)
+        // ============================================
+        socket.on("initiate-vote", (roomId, callback) => {
+            try {
+                const room = gameManager.getRoom(roomId);
+
+                if (!room) {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message: "Salon non trouvé",
+                        });
+                    }
+                    return;
+                }
+
+                // Vérifier que la partie est en phase "playing"
+                if (room.gameState.phase !== "playing") {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message: "Impossible de voter maintenant",
+                        });
+                    }
+                    return;
+                }
+
+                // Lancer le vote
+                const result = room.initiateVote(socket.id);
+
+                if (result.success) {
+                    // Informer tous les joueurs du début du vote
+                    io.to(roomId).emit("vote-started", {
+                        initiator: result.initiator,
+                        duration: 30,
+                        endsAt: result.endsAt,
+                    });
+
+                    logger.info(
+                        `Vote initié dans ${roomId} par ${result.initiator}`
+                    );
+
+                    // Timer serveur pour fin automatique du vote
+                    setTimeout(() => {
+                        const room = gameManager.getRoom(roomId);
+                        if (
+                            room &&
+                            room.gameState.phase === "voting" &&
+                            !room.gameState.voteEnded
+                        ) {
+                            logger.info(
+                                `⏰ Timer expiré - Fin automatique du vote dans ${roomId}`
+                            );
+                            endVoteAndSendResults(io, roomId);
+                        }
+                    }, 30000); // 30 secondes
+                }
+
+                if (callback) {
+                    callback(result);
+                }
+            } catch (error) {
+                logger.error("Erreur initiation vote:", error);
+                if (callback) {
+                    callback({ success: false, message: error.message });
+                }
+            }
+        });
+
+        // ============================================
+        // ÉVÉNEMENT: Voter pour un joueur (Sprint 2)
+        // ============================================
+        socket.on("cast-vote", ({ roomId, targetId }, callback) => {
+            try {
+                const room = gameManager.getRoom(roomId);
+
+                if (!room) {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message: "Salon non trouvé",
+                        });
+                    }
+                    return;
+                }
+
+                // Vérifier que le vote est en cours
+                if (room.gameState.phase !== "voting") {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message: "Aucun vote en cours",
+                        });
+                    }
+                    return;
+                }
+
+                // Enregistrer le vote
+                const result = room.castVote(socket.id, targetId);
+
+                if (result.success) {
+                    // Informer tous les joueurs du nombre de votes
+                    io.to(roomId).emit("vote-registered", {
+                        votesCount: result.votesCount,
+                        totalPlayers: result.totalPlayers,
+                    });
+
+                    const voter = room.findPlayer(socket.id);
+                    const target = room.findPlayer(targetId);
+                    logger.info(
+                        `Vote dans ${roomId}: ${voter?.username} → ${target?.username} (${result.votesCount}/${result.totalPlayers})`
+                    );
+
+                    // Si tous les joueurs ont voté, terminer immédiatement
+                    if (result.allVoted) {
+                        logger.info(
+                            `✅ Tous les joueurs ont voté dans ${roomId} - Fin anticipée`
+                        );
+                        endVoteAndSendResults(io, roomId);
+                    }
+                }
+
+                if (callback) {
+                    callback(result);
+                }
+            } catch (error) {
+                logger.error("Erreur enregistrement vote:", error);
+                if (callback) {
+                    callback({ success: false, message: error.message });
+                }
+            }
+        });
+
+        // ============================================
+        // ÉVÉNEMENT: Démarrer le tour suivant (Sprint 2)
+        // ============================================
+        socket.on("start-next-round", (roomId, callback) => {
+            try {
+                const room = gameManager.getRoom(roomId);
+
+                if (!room) {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message: "Salon non trouvé",
+                        });
+                    }
+                    return;
+                }
+
+                // Vérifier que l'émetteur est l'hôte
+                const player = room.findPlayer(socket.id);
+                if (!player || !player.isHost) {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message:
+                                "Seul l'hôte peut démarrer le tour suivant",
+                        });
+                    }
+                    return;
+                }
+
+                // Importer les paires de mots
+                import("../data/wordPairs.js").then((module) => {
+                    const wordPairs = module.default;
+
+                    // Démarrer le nouveau tour
+                    const result = room.startNextRound(wordPairs);
+
+                    if (result.success) {
+                        // Informer tous les joueurs
+                        io.to(roomId).emit("new-round-started", {
+                            phase: "playing",
+                            currentRound: room.gameState.currentRound,
+                            firstSpeaker: room.gameState.firstSpeaker,
+                        });
+
+                        // Envoyer les nouveaux mots
+                        room.players.forEach((player) => {
+                            console.log(
+                                `📤 Nouveau mot pour ${player.username}: "${player.currentWord}"`
+                            );
+                            io.to(player.id).emit("word-assigned", {
+                                word: player.currentWord,
+                            });
+                        });
+
+                        logger.success(
+                            `Nouveau tour démarré dans ${roomId} - Tour ${room.gameState.currentRound}`
+                        );
+                    }
+
+                    if (callback) {
+                        callback(result);
+                    }
+                });
+            } catch (error) {
+                logger.error("Erreur démarrage nouveau tour:", error);
+                if (callback) {
+                    callback({ success: false, message: error.message });
+                }
+            }
+        });
+
+        // ============================================
+        // ÉVÉNEMENT: Obtenir les infos d'un salon
+        // ============================================
         socket.on("get-room-info", (roomId, callback) => {
             try {
                 const room = gameManager.getRoom(roomId);
@@ -175,7 +392,9 @@ export function setupSocketHandlers(io) {
             }
         });
 
-        // Événement: Lister tous les salons (pour admin)
+        // ============================================
+        // ÉVÉNEMENT: Lister tous les salons (pour admin)
+        // ============================================
         socket.on("list-rooms", (callback) => {
             try {
                 const rooms = gameManager.getAllRooms();
@@ -191,7 +410,9 @@ export function setupSocketHandlers(io) {
             }
         });
 
-        // Événement: Déconnexion
+        // ============================================
+        // ÉVÉNEMENT: Déconnexion
+        // ============================================
         socket.on("disconnect", () => {
             const disconnectInfo = gameManager.handlePlayerDisconnect(
                 socket.id
@@ -215,8 +436,46 @@ export function setupSocketHandlers(io) {
         });
     });
 
+    // ============================================
     // Nettoyage périodique des joueurs déconnectés
+    // ============================================
     setInterval(() => {
         gameManager.cleanupDisconnectedPlayers();
     }, 30000); // Toutes les 30 secondes
+}
+
+/**
+ * Fonction helper pour terminer le vote et envoyer les résultats
+ * @param {Server} io - Instance Socket.IO
+ * @param {string} roomId - ID du salon
+ */
+function endVoteAndSendResults(io, roomId) {
+    const room = gameManager.getRoom(roomId);
+    if (!room) return;
+
+    // Terminer le vote et calculer les résultats
+    const voteResults = room.endVote();
+
+    if (voteResults) {
+        // Envoyer les résultats à tous les joueurs
+        io.to(roomId).emit("vote-ended", voteResults);
+
+        logger.success(
+            `Vote terminé dans ${roomId} - ${
+                voteResults.voteCorrect ? "✅ Correct" : "❌ Incorrect"
+            }`
+        );
+        logger.info(
+            `Éliminé: ${voteResults.eliminatedPlayer.username} (était ${
+                voteResults.eliminatedPlayer.wasImpostor ? "intrus" : "normal"
+            })`
+        );
+
+        // Si il y a un gagnant, mettre à jour l'état
+        if (voteResults.winner) {
+            logger.success(
+                `🏆 Victoire de ${voteResults.winner.username} avec ${voteResults.winner.score} points !`
+            );
+        }
+    }
 }
