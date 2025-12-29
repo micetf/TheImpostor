@@ -17,6 +17,9 @@ export function SocketProvider({ children }) {
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionAttempts: 5,
+            transports: ["websocket", "polling"],
+            forceNew: false,
+            multiplex: true,
         });
 
         const socket = socketRef.current;

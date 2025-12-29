@@ -1,104 +1,194 @@
 # The Impostor - Jeu Multijoueur
 
-## 📦 Installation
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Node](https://img.shields.io/badge/node-%3E%3D16.0.0-green)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-### 1. Extraire l'archive
+Jeu multijoueur en temps réel inspiré du jeu "Undercover". Les joueurs reçoivent des mots et doivent identifier celui qui a un mot différent à travers des discussions et votes.
+
+## 🎮 Concept du jeu
+
+-   **Joueurs** : 3 à 10 par partie
+-   **Principe** : Un joueur reçoit un mot différent (l'intrus) mais ne le sait pas
+-   **Objectif** : Identifier l'intrus en écoutant les descriptions
+-   **Victoire** : Premier joueur à atteindre 10 points
+
+### Règle clé 🔑
+
+**Aucun joueur ne connaît son statut** (intrus ou normal). Chacun reçoit uniquement un mot et doit déduire s'il a le mot de la majorité.
+
+## 🚀 Démarrage rapide
+
+### Prérequis
+
+-   Node.js >= 16.0.0
+-   pnpm (recommandé) ou npm
+
+### Installation
 
 ```bash
-tar -xzf TheImpostor.tar.gz
+# Cloner le dépôt
+git clone https://github.com/votre-username/TheImpostor.git
 cd TheImpostor
-```
 
-### 2. Ajouter le fichier wordPairs.js complet
-
-⚠️ **ACTION REQUISE** : Copiez votre fichier `wordPairs.js` dans `server/src/data/`
-
-```bash
-# Exemple si le fichier est dans votre dossier Téléchargements
-cp ~/Téléchargements/wordPairs.js server/src/data/wordPairs.js
-```
-
-Ensuite, modifiez la dernière ligne du fichier pour utiliser ESM :
-
--   Ouvrez `server/src/data/wordPairs.js`
--   Remplacez `module.exports = wordPairs;` par `export default wordPairs;`
-
-### 3. Installer les dépendances du serveur
-
-```bash
-cd server
+# Installer toutes les dépendances
 pnpm install
 ```
 
-### 4. Démarrer le serveur
+### Lancement
+
+**Terminal 1 - Serveur :**
 
 ```bash
+cd server
 pnpm run dev
 ```
 
-Vous devriez voir :
-
-```
-✅ Serveur démarré sur le port 3001
-ℹ️  Socket.IO prêt pour les connexions
-🌐 Client attendu sur http://localhost:5173
-```
-
-## 🧪 Tester l'API
+**Terminal 2 - Client :**
 
 ```bash
-# Tester le health check
-curl http://localhost:3001/health
-
-# Tester le statut
-curl http://localhost:3001/api/status
+cd client
+pnpm run dev
 ```
+
+Le serveur démarre sur `http://localhost:3001`  
+Le client démarre sur `http://localhost:5173`
 
 ## 📂 Structure du projet
 
 ```
 TheImpostor/
-├── README.md
-├── pnpm-workspace.yaml
-├── package.json
-├── client/                  (à venir - Étape 2)
-└── server/
-    ├── src/
-    │   ├── game/
-    │   │   ├── GameManager.js    ✅ Gestionnaire central
-    │   │   ├── Room.js            ✅ Logique salon
-    │   │   └── Player.js          ✅ Logique joueur
-    │   ├── socket/
-    │   │   └── socketHandler.js   ✅ Événements Socket.IO
-    │   ├── data/
-    │   │   └── wordPairs.js       ⚠️  À ajouter manuellement
-    │   └── utils/
-    │       └── logger.js          ✅ Logger
-    ├── package.json
-    └── index.js
+├── client/                 # Application React
+│   ├── src/
+│   │   ├── pages/         # Pages principales (Home, Lobby, Game)
+│   │   ├── contexts/      # Context Socket.IO
+│   │   ├── utils/         # Constantes et helpers
+│   │   └── index.css      # Styles Tailwind
+│   └── package.json
+├── server/                 # Serveur Node.js
+│   ├── src/
+│   │   ├── game/          # Logique métier (GameManager, Room, Player)
+│   │   ├── socket/        # Gestionnaires Socket.IO
+│   │   ├── data/          # Paires de mots
+│   │   └── utils/         # Logger
+│   └── package.json
+├── docs/                   # Documentation
+└── package.json           # Scripts racine
 ```
 
-## 🎯 Événements Socket.IO disponibles
+## 🎯 Fonctionnalités
 
-| Événement             | Description                 |
-| --------------------- | --------------------------- |
-| `create-room`         | Créer un salon              |
-| `join-room`           | Rejoindre un salon          |
-| `get-room-info`       | Obtenir infos d'un salon    |
-| `list-rooms`          | Lister tous les salons      |
-| `room-updated`        | Mise à jour du salon (émis) |
-| `player-disconnected` | Joueur déconnecté (émis)    |
+### ✅ Actuellement implémentées (Sprint 1)
 
-## 🚀 Prochaines étapes
+-   Création et gestion de salons
+-   Connexion temps réel (Socket.IO)
+-   Distribution aléatoire des mots
+-   Désignation du premier orateur
+-   Interface responsive (Tailwind CSS)
 
--   **Étape 2** : Client React + Tailwind CSS
--   **Étape 3** : Distribution des mots et début de partie
--   **Étape 4** : Système de vote
--   **Étape 5** : Scores et fin de partie
+### 🚧 En développement
 
-## ⚙️ Configuration
+-   **Sprint 2** : Système de vote avec timer
+-   **Sprint 3** : Calcul automatique des scores
+-   **Sprint 4** : Interface administrateur
 
--   **Port serveur :** 3001
--   **Max joueurs/salon :** 10
--   **Score de victoire :** 10 points
--   **Fenêtre de reconnexion :** 2 minutes
+## 🛠️ Stack technique
+
+**Frontend :**
+
+-   React 18.2 (hooks natifs)
+-   React Router 6
+-   Socket.IO Client 4.8
+-   Tailwind CSS 3.4
+-   Vite 5 (bundler avec SWC)
+
+**Backend :**
+
+-   Node.js
+-   Express 4.22
+-   Socket.IO 4.8
+-   Architecture événementielle
+
+**Outils :**
+
+-   pnpm (gestionnaire de paquets)
+-   ESM (modules ES6)
+
+## 📡 Événements Socket.IO
+
+### Client → Serveur
+
+-   `create-room` : Créer un nouveau salon
+-   `join-room` : Rejoindre un salon existant
+-   `start-game` : Démarrer la partie (hôte uniquement)
+
+### Serveur → Client
+
+-   `room-updated` : Mise à jour de l'état du salon
+-   `game-started` : Début de partie
+-   `word-assigned` : Attribution du mot personnel
+-   `player-disconnected` : Déconnexion d'un joueur
+
+## 🔐 Règles de confidentialité
+
+Le serveur ne transmet **JAMAIS** au client l'information `isImpostor` d'un joueur. Cette donnée reste strictement côté serveur pour :
+
+-   Le calcul des scores (Sprint 2)
+-   Les statistiques de fin de partie (Sprint 3)
+
+## 🧪 Tests
+
+```bash
+# Serveur
+cd server
+pnpm test
+
+# Client
+cd client
+pnpm test
+```
+
+## 📖 Documentation complète
+
+La documentation détaillée est disponible dans le dossier `docs/` :
+
+-   [Cahier des charges](docs/01-analyse/cahier-des-charges.md)
+-   [Architecture technique](docs/03-developpement/architecture.md)
+-   [Guide de contribution](docs/03-developpement/guide-contribution.md)
+
+## 🤝 Contribution
+
+1. Fork le projet
+2. Créer une branche (`git checkout -b feature/AmazingFeature`)
+3. Commit les changements (`git commit -m 'Add AmazingFeature'`)
+4. Push vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrir une Pull Request
+
+## 📝 Changelog
+
+### v1.0.0 - Sprint 1 (2024-12-29)
+
+-   ✅ Infrastructure client/serveur
+-   ✅ Gestion des salons et joueurs
+-   ✅ Distribution des mots
+-   ✅ Interface de lobby
+-   ✅ Page de jeu avec affichage du mot
+
+## 👤 Auteur
+
+**CPC Numérique**
+
+## 📄 License
+
+Ce projet est sous licence MIT.
+
+## 🆘 Support
+
+Pour toute question ou problème :
+
+-   Ouvrir une issue sur GitHub
+-   Consulter la documentation dans `/docs`
+
+---
+
+**Note technique :** Ce projet utilise un monorepo pnpm. Les dépendances sont gérées via `pnpm-workspace.yaml`.

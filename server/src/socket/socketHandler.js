@@ -80,6 +80,78 @@ export function setupSocketHandlers(io) {
             }
         });
 
+        // Événement: Démarrer la partie (réservé à l'hôte)
+        socket.on("start-game", (roomId, callback) => {
+            try {
+                const room = gameManager.getRoom(roomId);
+
+                if (!room) {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message: "Salon non trouvé",
+                        });
+                    }
+                    return;
+                }
+
+                // Vérifier que l'émetteur est bien l'hôte
+                const player = room.findPlayer(socket.id);
+                if (!player || !player.isHost) {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message: "Seul l'hôte peut démarrer la partie",
+                        });
+                    }
+                    return;
+                }
+
+                // Importer les paires de mots
+                import("../data/wordPairs.js").then((module) => {
+                    const wordPairs = module.default;
+
+                    // Démarrer la partie
+                    const result = room.startGame(wordPairs);
+
+                    if (result.success) {
+                        // Informer TOUS les joueurs que la partie démarre
+                        io.to(roomId).emit("game-started", {
+                            phase: "playing",
+                            currentRound: room.gameState.currentRound,
+                            firstSpeaker: room.gameState.firstSpeaker,
+                        });
+
+                        // Envoyer à CHAQUE joueur UNIQUEMENT son mot
+                        room.players.forEach((player) => {
+                            io.to(player.id).emit("word-assigned", {
+                                word: player.currentWord,
+                            });
+                        });
+
+                        logger.success(
+                            `Partie démarrée dans ${roomId} - Tour ${room.gameState.currentRound}`
+                        );
+                        logger.info(
+                            `Intrus: ${
+                                room.players.find((p) => p.isImpostor)
+                                    ?.username || "N/A"
+                            }`
+                        );
+                    }
+
+                    if (callback) {
+                        callback(result);
+                    }
+                });
+            } catch (error) {
+                logger.error("Erreur démarrage partie:", error);
+                if (callback) {
+                    callback({ success: false, message: error.message });
+                }
+            }
+        });
+
         // Événement: Obtenir les infos d'un salon
         socket.on("get-room-info", (roomId, callback) => {
             try {

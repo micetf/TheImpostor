@@ -19,7 +19,6 @@ export default function Lobby() {
 
         console.log("📡 Lobby monté, socket ID:", socket.id);
 
-        // RE-JOINDRE la room Socket.IO pour s'assurer d'être à jour
         socket.emit(
             SOCKET_EVENTS.JOIN_ROOM,
             { roomId, username },
@@ -54,22 +53,49 @@ export default function Lobby() {
         };
     }, [socket, isConnected, roomId, username]);
 
-    /**
-     * Copier le code du salon
-     */
+    useEffect(() => {
+        if (!socket || !isConnected) return;
+
+        const handleGameStarted = (data) => {
+            console.log("🎮 Partie démarrée, redirection vers le jeu...", data);
+            navigate(`/game/${roomId}`, {
+                state: { username },
+            });
+        };
+
+        socket.on("game-started", handleGameStarted);
+
+        return () => {
+            socket.off("game-started", handleGameStarted);
+        };
+    }, [socket, isConnected, roomId, username, navigate]);
+
+    const handleStartGame = () => {
+        if (!room.canStart) {
+            alert(
+                `Impossible de démarrer : minimum ${CONFIG.MIN_PLAYERS} joueurs requis`
+            );
+            return;
+        }
+
+        socket.emit("start-game", roomId, (response) => {
+            console.log("📡 Réponse start-game:", response);
+
+            if (!response.success) {
+                setError(response.message || "Erreur lors du démarrage");
+            }
+        });
+    };
+
     const copyRoomCode = () => {
         navigator.clipboard.writeText(roomId);
         alert("Code copié !");
     };
 
-    /**
-     * Quitter le salon
-     */
     const handleLeave = () => {
         navigate("/");
     };
 
-    // Trouver le joueur actuel
     const currentPlayer = room?.players.find((p) => p.username === username);
     const isHost = currentPlayer?.isHost || false;
 
@@ -99,7 +125,6 @@ export default function Lobby() {
     return (
         <div className="min-h-screen p-4">
             <div className="max-w-4xl mx-auto">
-                {/* En-tête avec code du salon */}
                 <div className="card mb-6">
                     <div className="flex items-center justify-between mb-4">
                         <h1 className="text-2xl font-bold text-gray-800">
@@ -137,7 +162,6 @@ export default function Lobby() {
                     </div>
                 </div>
 
-                {/* Liste des joueurs */}
                 <div className="card mb-6">
                     <h2 className="text-xl font-bold text-gray-800 mb-4">
                         👥 Joueurs ({room.playerCount})
@@ -182,11 +206,11 @@ export default function Lobby() {
                     </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-4">
                     {isHost && (
                         <button
                             disabled={!room.canStart}
+                            onClick={handleStartGame}
                             className="btn-primary flex-1"
                         >
                             🎮 Démarrer la partie
@@ -198,7 +222,6 @@ export default function Lobby() {
                     </button>
                 </div>
 
-                {/* Message pour l'hôte */}
                 {isHost && !room.canStart && (
                     <div className="mt-4 bg-orange-50 border border-orange-200 text-orange-700 px-4 py-3 rounded-lg text-sm">
                         ⏳ En attente de joueurs... (minimum{" "}
@@ -206,7 +229,6 @@ export default function Lobby() {
                     </div>
                 )}
 
-                {/* Message pour les joueurs */}
                 {!isHost && (
                     <div className="mt-4 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
                         ⏳ En attente que l'hôte démarre la partie...
