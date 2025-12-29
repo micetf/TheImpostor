@@ -20,12 +20,18 @@ export function SocketProvider({ children }) {
             transports: ["websocket", "polling"],
             forceNew: false,
             multiplex: true,
+            withCredentials: true,
+            timeout: 10000,
         });
 
         const socket = socketRef.current;
 
         socket.on("connect", () => {
             console.log("✅ Connecté au serveur:", socket.id);
+            console.log(
+                "🔗 Transport utilisé:",
+                socket.io.engine.transport.name
+            );
             setIsConnected(true);
             setError(null);
         });
@@ -37,8 +43,23 @@ export function SocketProvider({ children }) {
 
         socket.on("connect_error", (err) => {
             console.error("❌ Erreur de connexion:", err.message);
+            console.error("❌ Description:", err.description);
+            console.error("❌ Type:", err.type);
             setError(err.message);
             setIsConnected(false);
+        });
+
+        // ✅ Ajoute ces événements de debug
+        socket.io.on("error", (error) => {
+            console.error("❌ Socket.IO error:", error);
+        });
+
+        socket.io.on("reconnect_attempt", () => {
+            console.log("🔄 Tentative de reconnexion...");
+        });
+
+        socket.io.on("reconnect_failed", () => {
+            console.error("❌ Échec de reconnexion");
         });
 
         // Nettoyage à la destruction de l'app

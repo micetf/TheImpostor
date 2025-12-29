@@ -9,9 +9,21 @@ import logger from "./src/utils/logger.js";
 const app = express();
 const httpServer = createServer(app);
 
-// Configuration CORS pour Socket.IO et Express
+// ✅ Configuration CORS pour développement réseau local
 const corsOptions = {
-    origin: "http://localhost:5173", // URL du client Vite
+    origin: (origin, callback) => {
+        // Autoriser les requêtes sans origin (comme les apps mobiles)
+        // ou depuis localhost et le réseau local
+        if (
+            !origin ||
+            origin.startsWith("http://localhost") ||
+            origin.match(/^http:\/\/192\.168\.\d{1,3}\.\d{1,3}/)
+        ) {
+            callback(null, true);
+        } else {
+            callback(new Error("Non autorisé par CORS"));
+        }
+    },
     credentials: true,
 };
 
@@ -21,6 +33,8 @@ app.use(express.json());
 // Configuration Socket.IO
 const io = new Server(httpServer, {
     cors: corsOptions,
+    transports: ["websocket", "polling"],
+    allowEIO3: true,
 });
 
 // Routes Express basiques
@@ -42,10 +56,14 @@ setupSocketHandlers(io);
 // Démarrage du serveur
 const PORT = process.env.PORT || 3001;
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, "0.0.0.0", () => {
     logger.success(`🚀 Serveur démarré sur le port ${PORT}`);
     logger.info(`📡 Socket.IO prêt pour les connexions`);
-    logger.info(`🌐 Client attendu sur http://localhost:5173`);
+    logger.info(`🌐 Accessible sur le réseau local`);
+
+    // ✅ Ajoute ces logs pour debug
+    const { address } = httpServer.address();
+    logger.info(`🔗 Écoute sur: ${address}:${PORT}`);
 });
 
 // Gestion des erreurs
