@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 /**
  * Panneau de vote permettant aux joueurs de désigner l'intrus
- * Affiche la liste des joueurs et un timer de 30 secondes
+ * Affiche la liste des joueurs (INCLUANT soi-même) et un timer de 30 secondes
  *
  * @component
  * @param {Object} props
@@ -46,10 +46,11 @@ export default function VotePanel({
 
     /**
      * Gère le clic sur un joueur pour le sélectionner
+     * Note : Le joueur peut se désigner lui-même (stratégie de jeu)
      * @param {string} playerId - ID du joueur sélectionné
      */
     const handleSelectPlayer = (playerId) => {
-        if (hasVoted || playerId === mySocketId) return;
+        if (hasVoted) return;
         setSelectedPlayer(playerId);
     };
 
@@ -110,15 +111,20 @@ export default function VotePanel({
                         <p className="text-sm">
                             Cliquez sur un joueur puis confirmez votre choix
                         </p>
+                        <p className="text-xs mt-1 text-blue-600">
+                            💡 Vous pouvez vous désigner vous-même si vous
+                            pensez être l'intrus
+                        </p>
                     </div>
                 )}
             </div>
 
-            {/* Liste des joueurs */}
+            {/* Liste des joueurs - TOUS les joueurs, y compris soi-même */}
             <div className="space-y-2 mb-4">
-                {players
-                    .filter((p) => p.id !== mySocketId)
-                    .map((player) => (
+                {players.map((player) => {
+                    const isMe = player.id === mySocketId;
+
+                    return (
                         <button
                             key={player.id}
                             onClick={() => handleSelectPlayer(player.id)}
@@ -131,16 +137,27 @@ export default function VotePanel({
                                 hasVoted
                                     ? "opacity-50 cursor-not-allowed"
                                     : "cursor-pointer"
-                            }`}
+                            } ${isMe ? "bg-yellow-50 border-yellow-300" : ""}`}
                         >
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center text-white font-bold">
+                                    <div
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                                            isMe
+                                                ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
+                                                : "bg-gradient-to-br from-gray-400 to-gray-600"
+                                        }`}
+                                    >
                                         {player.username[0].toUpperCase()}
                                     </div>
                                     <div className="text-left">
                                         <p className="font-semibold text-gray-800">
                                             {player.username}
+                                            {isMe && (
+                                                <span className="ml-2 text-xs text-yellow-600 font-bold">
+                                                    (VOUS)
+                                                </span>
+                                            )}
                                         </p>
                                         <p className="text-xs text-gray-500">
                                             Score: {player.score}
@@ -154,7 +171,8 @@ export default function VotePanel({
                                 )}
                             </div>
                         </button>
-                    ))}
+                    );
+                })}
             </div>
 
             {/* Bouton de confirmation */}

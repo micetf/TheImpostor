@@ -256,7 +256,9 @@ class Room {
         this.gameState.votedPlayers.add(voterId);
 
         console.log(
-            `[Room ${this.id}] ${voter.username} vote pour ${target.username}`
+            `[Room ${this.id}] ${voter.username} vote pour ${target.username}${
+                voterId === targetId ? " (AUTO-VOTE)" : ""
+            }`
         );
         console.log(
             `[Room ${this.id}] Votes: ${this.gameState.votedPlayers.size}/${this.players.length}`
