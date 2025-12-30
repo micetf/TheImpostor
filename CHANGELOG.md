@@ -15,6 +15,25 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 -   Animation de transition entre les tours
 -   Récapitulatif de fin de partie complet
 
+## [1.1.1] - 2024-12-30
+
+### Corrigé
+
+-   **Timer de vote bloqué à 30 secondes** (critique)
+    -   Incohérence de nommage entre serveur et client (`endTime` vs `endsAt` vs `voteEndTime`)
+    -   Le timestamp de fin du vote n'était pas transmis correctement au client
+    -   Uniformisation avec `voteEndTime` dans tous les fichiers
+    -   Ajout de logs de debug pour faciliter le suivi du timer
+    -   Le timer se décrémente maintenant correctement de 30 à 0 secondes
+    -   Ajout de validation du `voteEndTime` dans `VotePanel.jsx`
+
+#### Fichiers modifiés
+
+-   `server/src/game/Room.js` : Méthode `initiateVote()` retourne `voteEndTime` au lieu de `endTime`
+-   `server/src/socket/socketHandler.js` : Événement `vote-started` émet `voteEndTime` au lieu de `endsAt`
+-   `client/src/pages/Game.jsx` : Handler `handleVoteStarted` utilise `data.voteEndTime`
+-   `client/src/components/VotePanel.jsx` : Ajout validation et logs de debug
+
 ## [1.1.0] - 2024-12-30
 
 ### Sprint 2 - Système de Vote (COMPLÉTÉ)

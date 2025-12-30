@@ -212,9 +212,9 @@ class Room {
         return {
             success: true,
             message: "Vote initié",
-            initiatorUsername: initiator.username,
+            initiator: initiator.username,
             duration: this.VOTE_DURATION,
-            endTime: this.gameState.voteEndTime,
+            voteEndTime: this.gameState.voteEndTime,
         };
     }
 

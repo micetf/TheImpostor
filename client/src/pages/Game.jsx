@@ -90,10 +90,17 @@ export default function Game() {
         // Écouter le début d'un vote
         const handleVoteStarted = (data) => {
             console.log("🗳️ Vote démarré:", data);
+            console.log("   - Initiateur:", data.initiator);
+            console.log("   - Durée:", data.duration, "secondes");
+            console.log(
+                "   - Fin à:",
+                new Date(data.voteEndTime).toLocaleTimeString()
+            ); // ⬅️ AJOUTÉ : log pour debug
+
             setGameState((prev) => ({
                 ...prev,
                 phase: "voting",
-                voteEndTime: data.endsAt,
+                voteEndTime: data.voteEndTime, // ⬅️ MODIFIÉ : "voteEndTime" au lieu de "endsAt"
                 players: data.players || prev.players,
                 hasVoted: false,
                 votesCount: 0,

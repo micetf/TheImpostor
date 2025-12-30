@@ -36,6 +36,11 @@ export default function VotePanel({
             );
             setTimeRemaining(remaining);
 
+            // ⬅️ AJOUTÉ : Log toutes les 5 secondes pour debug
+            if (remaining % 5 === 0 && remaining > 0) {
+                console.log(`⏱️ Temps restant: ${remaining}s`);
+            }
+
             if (remaining === 0) {
                 clearInterval(interval);
             }

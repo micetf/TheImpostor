@@ -197,7 +197,7 @@ export function setupSocketHandlers(io) {
                     io.to(roomId).emit("vote-started", {
                         initiator: result.initiator,
                         duration: 30,
-                        endsAt: result.endsAt,
+                        voteEndTime: result.voteEndTime,
                     });
 
                     logger.info(
@@ -217,7 +217,7 @@ export function setupSocketHandlers(io) {
                             );
                             endVoteAndSendResults(io, roomId);
                         }
-                    }, 30000); // 30 secondes
+                    }, result.duration * 1000); // ⬅️ MODIFIÉ : utiliser result.duration
                 }
 
                 if (callback) {
