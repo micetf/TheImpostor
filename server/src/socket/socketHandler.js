@@ -393,6 +393,68 @@ export function setupSocketHandlers(io) {
         });
 
         // ============================================
+        // ÉVÉNEMENT: Obtenir l'état du jeu
+        // ============================================
+        socket.on("get-game-state", (roomId, callback) => {
+            try {
+                const room = gameManager.getRoom(roomId);
+
+                if (!room) {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message: "Salon non trouvé",
+                        });
+                    }
+                    return;
+                }
+
+                // ⬅️ TROUVER LE JOUEUR QUI DEMANDE L'ÉTAT
+                const player = room.findPlayer(socket.id);
+
+                if (!player) {
+                    if (callback) {
+                        callback({
+                            success: false,
+                            message: "Joueur non trouvé dans ce salon",
+                        });
+                    }
+                    return;
+                }
+
+                // Envoyer l'état complet du jeu pour ce joueur
+                const gameState = {
+                    success: true,
+                    phase: room.gameState.phase,
+                    currentRound: room.gameState.currentRound,
+                    firstSpeaker: room.gameState.firstSpeaker,
+                    voteEndTime: room.gameState.voteEndTime,
+                    word: player.currentWord, // ⬅️ AJOUTER LE MOT DU JOUEUR
+                    players: room.players.map((p) => ({
+                        id: p.id,
+                        username: p.username,
+                        isHost: p.isHost,
+                        score: p.score,
+                    })),
+                };
+
+                console.log(
+                    `[Socket] ${socket.id} (${player.username}) demande l'état du jeu ${roomId}`
+                );
+                console.log(`   - Mot attribué: "${player.currentWord}"`);
+
+                if (callback) {
+                    callback(gameState);
+                }
+            } catch (error) {
+                logger.error("Erreur récupération état du jeu:", error);
+                if (callback) {
+                    callback({ success: false, message: error.message });
+                }
+            }
+        });
+
+        // ============================================
         // ÉVÉNEMENT: Lister tous les salons (pour admin)
         // ============================================
         socket.on("list-rooms", (callback) => {

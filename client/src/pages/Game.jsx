@@ -40,6 +40,36 @@ export default function Game() {
 
         console.log("🎮 Page Game montée, socket ID:", socket.id);
 
+        // Récupérer l'état du jeu au montage
+        socket.emit("get-game-state", roomId, (response) => {
+            console.log("📥 État du jeu reçu:", response);
+
+            if (response.success) {
+                // ⬅️ METTRE À JOUR L'ÉTAT DU JEU
+                setGameState((prev) => ({
+                    ...prev,
+                    phase: response.phase,
+                    currentRound: response.currentRound,
+                    firstSpeaker: response.firstSpeaker,
+                    voteEndTime: response.voteEndTime,
+                    players: response.players,
+                }));
+
+                // ⬅️ METTRE À JOUR LE MOT SI PRÉSENT
+                if (response.word) {
+                    console.log(
+                        "🎯 Mot reçu depuis get-game-state:",
+                        response.word
+                    );
+                    setMyWord(response.word);
+                }
+            } else {
+                setError(
+                    response.message || "Impossible de récupérer l'état du jeu"
+                );
+            }
+        });
+
         // Écouter l'événement de démarrage de partie
         const handleGameStarted = (data) => {
             console.log("🎮 Partie démarrée:", data);
@@ -53,7 +83,7 @@ export default function Game() {
 
         // Écouter l'attribution du mot personnel
         const handleWordAssigned = (data) => {
-            console.log("🎯 Mot reçu:", data.word);
+            console.log("🎯 Mot reçu depuis word-assigned:", data.word);
             setMyWord(data.word);
         };
 
@@ -63,15 +93,15 @@ export default function Game() {
             setGameState((prev) => ({
                 ...prev,
                 phase: "voting",
-                voteEndTime: data.endTime,
-                players: data.players,
+                voteEndTime: data.endsAt,
+                players: data.players || prev.players,
                 hasVoted: false,
                 votesCount: 0,
-                totalPlayers: data.players.length,
+                totalPlayers: data.players?.length || prev.totalPlayers,
             }));
             setVotesProgress({
                 count: 0,
-                total: data.players.length,
+                total: data.players?.length || gameState.totalPlayers,
             });
         };
 
@@ -100,12 +130,15 @@ export default function Game() {
             setGameState((prev) => ({
                 ...prev,
                 phase: "playing",
-                currentRound: data.round,
+                currentRound: data.currentRound,
                 firstSpeaker: data.firstSpeaker,
                 hasVoted: false,
                 votesCount: 0,
             }));
             setVoteResults(null);
+
+            // ⬅️ IMPORTANT : Réinitialiser le mot pour le nouveau tour
+            // Il sera mis à jour par l'événement word-assigned ou get-game-state
         };
 
         socket.on("game-started", handleGameStarted);
@@ -123,7 +156,7 @@ export default function Game() {
             socket.off("vote-ended", handleVoteEnded);
             socket.off("new-round-started", handleNewRound);
         };
-    }, [socket, isConnected]);
+    }, [socket, isConnected, roomId]);
 
     /**
      * Initie un vote
